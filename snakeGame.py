@@ -7,6 +7,8 @@ import pygame
 
 from enum import Enum 
 
+import random 
+
 pygame.init()
 
 
@@ -101,9 +103,29 @@ class Player(Entity):
 			#Checking Y position 
 			if self.pos[1] + self.image.get_height() < self.screenH and self.pos[1] > 0: 
 				return True 
-
 		#Else 
 		return False 
+
+class Fruit(Entity):
+
+	def __init__(self, imageFile, screenD):
+
+		#Initially the Position of the Fruit will be random 
+
+		randX = random.randint(0, screenD[0])
+		randY = random.randint(0, screenD[1])
+		pos = [randX, randY]
+		
+		super().__init__(pos, imageFile)
+
+
+
+	#Overriding the update method 
+	def update(self, keys, dt):
+		pass
+
+
+
 
 #Main Game Class
 class Game:
@@ -117,6 +139,10 @@ class Game:
 		self.player = Player(0.5, [400,400], "head.png", [screenW, screenH])
 
 		pygame.display.set_caption("Jc Snake Game")
+
+		#Fruit 
+		#ImageFile, screenD
+		self.fruit = Fruit("temp.png", [screenW, screenH])
 
 	def start(self):
 		self.__gameLoop()
@@ -160,9 +186,12 @@ class Game:
 	def __updateComponents(self, keys, dt):
 		self.player.update(keys,dt)
 
+		self.fruit.update(keys,dt)
+
 	#Draws all the components of the Game 
 	def __drawComponents(self):
 		self.player.draw(self.screen)
+		self.fruit.draw(self.screen)
 
 def main():
 
