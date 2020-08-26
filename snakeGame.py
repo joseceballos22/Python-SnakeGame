@@ -12,6 +12,15 @@ import random
 pygame.init()
 
 
+"""
+	Things Todo: 
+	- Add collision Detection 
+	- Link the Head Fruit and Body Together 
+	- Game is Done 
+
+"""
+
+
 
 class Entity:
 
