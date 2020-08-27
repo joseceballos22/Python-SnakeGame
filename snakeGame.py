@@ -14,11 +14,52 @@ pygame.init()
 
 """
 	Things Todo: 
-	- Add collision Detection 
-	- Link the Head Fruit and Body Together 
+	- Link the Head Fruit and Body Together (BUG TAIL POSITION IS THE SAME AS PLAYER POSITION )
 	- Game is Done 
 
 """
+
+
+#Used to Detect Collisions Between Two Entities 
+class Collision:
+	
+
+	def __init__(self, first, second):
+		
+		#Saving the Entities Used to check for collision 
+		self.first = first 
+		self.second = second 		
+
+		#Getting Half Sizes of the Entities 
+		self.firstHalfSize = (self.first.image.get_width() /2 , self.first.image.get_height() / 2)
+		self.secondHalfSize = (self.second.image.get_width() /2 , self.second.image.get_height() / 2)
+
+	def isColliding(self):
+
+		entitiesColliding = False #initially False 
+
+		#Dont Need to Saving it since it will constantly be changing 
+		#Getting the Positions Of the two entities 
+		firstPos = self.first.pos
+		secondPos = self.second.pos 
+
+		#Getting the Center of the Surfaces 
+		firstCenter = (firstPos[0] - self.firstHalfSize[0], firstPos[1] - self.firstHalfSize[1])
+		secondCenter = (secondPos[0] - self.secondHalfSize[0], secondPos[1] - self.secondHalfSize[1])
+
+
+		#Calculating the Distance Between Both Centers 
+		deltaX = abs(firstCenter[0] - secondCenter[0])
+		deltaY = abs(firstCenter[1] - secondCenter[1])
+
+		#Seeing if the Entities are intersecting 
+		intersectX = deltaX - (self.firstHalfSize[0] + self.secondHalfSize[0])
+		intersectY = deltaY - (self.firstHalfSize[1] + self.secondHalfSize[1])
+
+		if intersectX < 0 and intersectY < 0:
+			entitiesColliding = True 
+
+		return entitiesColliding
 
 
 
@@ -32,6 +73,8 @@ class Entity:
 		#Ensuring Entity is to the correct Dimensions 
 		self.image = pygame.transform.scale(self.image, (width, height))
 
+		self.colliding = False #Initially the entity is not colliding with anything 
+
 	#All Entities Will have Different Update Methods 
 	def update(self, keys, dt):
 		pass
@@ -39,6 +82,10 @@ class Entity:
 	#Drawing the Image on to the screen 
 	def draw(self, screen):
 		screen.blit(self.image, (self.pos[0], self.pos[1]))
+
+	#Updates the Collision Variable of the entity 
+	def setColliding(self, newValue):
+		self.colliding = newValue
 
 
 #Helps With Player Class
@@ -51,9 +98,9 @@ class Dir(Enum):
 
 class Player(Entity):
 
-	def __init__(self, speed, pos, imageFile, screenD):
+	def __init__(self, speed, pos, imageFile, screenD, width = 20, height = 20):
 		
-		super().__init__(pos, imageFile)
+		super().__init__(pos, imageFile, width, height)
 		self.speed = speed 
 
 		self.dir = Dir.RIGHT #Initially Direction is to the Right 
@@ -61,18 +108,53 @@ class Player(Entity):
 		self.screenW = screenD[0]
 		self.screenH = screenD[1]
 
+		#Initially Empty 
+		self.body = []
 	#Updates the Player 
 	def update(self, keys, dt):
 
 		if self.__checkBorder() == True: 
 			#Constantly Moving the Player 
+			self.__changeDir(keys) 
 			self.__movePlayer(dt)
+
+		#Updating Body
+		self.__updateBody()
+
+
+	#Moves the Body with the Player 
+	def __updateBody(self):
+
+
+		if len(self.body) > 0: 
+
+			#Starting at the back
+			for i in range(len(self.body) -1, 0, -1):
+				self.body[i].pos = self.body[i-1].pos[:]
+
+			tempPos = self.pos[:]
+			self.body[0].pos = tempPos
+
+	#Overriding the Draw Method So that it Draws the Body as well 
+	def draw(self, screen):
+
+		#Drawing the Body 
+		for i in range(len(self.body)):
+			screen.blit(self.body[i].image, (self.body[i].pos[0], self.body[i].pos[1]))
 		
-		#Updating the Direction of the Player 
-		self.__changeDir(keys) 
+		#Drawing the Player 
+		screen.blit(self.image, (self.pos[0], self.pos[1]))
 
+	def growBody(self):
 
-
+		#Checking if its the first element in the list 
+		if len(self.body) == 0:
+			#pos = [0,0], imageFile = "temp.png", width = 20, height = 20)
+			tempPos = self.pos[:]
+			self.body.append(Entity(tempPos, "body.png", self.image.get_width(), self.image.get_height()))	
+		else:
+			self.body.append(Entity(self.body[len(self.body) -1].pos, "body.png", self.image.get_width(), self.image.get_height()))
+			pass
 
 	#Updates the Direction of the Player 
 	def __changeDir(self, keys):
@@ -145,13 +227,19 @@ class Game:
 		self.screen = pygame.display.set_mode((screenW, screenH))
 
 		#speed, position , imageFile
-		self.player = Player(0.5, [400,400], "head.png", [screenW, screenH])
+		self.player = Player(0.5, [400,400], "head.png", [screenW, screenH], 40,40)
 
 		pygame.display.set_caption("Jc Snake Game")
 
 		#Fruit 
 		#ImageFile, screenD
 		self.fruit = Fruit("temp.png", [screenW, screenH])
+
+		#Used to Control Amount of Collisions that can occur 
+		self.counter = 0 #Initially Zero 
+
+		#First Entity, Second Entitiy
+		self.collisionChecker = Collision(self.player, self.fruit)
 
 	def start(self):
 		self.__gameLoop()
@@ -193,9 +281,33 @@ class Game:
 
 	#Updates all the Components of the Game 
 	def __updateComponents(self, keys, dt):
-		self.player.update(keys,dt)
 
+		#Updating Collision First
+		self.__updateCollision(dt)
+
+		self.player.update(keys,dt)
 		self.fruit.update(keys,dt)
+		
+
+	#Updates All Collisions of the game 
+	def __updateCollision(self, dt):
+
+		self.counter +=  dt
+
+		# One Collision per 5 Frames 
+		if self.counter > (dt * 5):
+
+			#Player and Fruit are Colliding 
+			if self.collisionChecker.isColliding() == True: 
+
+				#Telling the Player to Grow a Tail 
+				self.player.growBody()
+				#Telling the Fruit to Move to a different location 
+
+			#Resetting Counter 
+			self.counter = 0 
+
+		pass
 
 	#Draws all the components of the Game 
 	def __drawComponents(self):
