@@ -15,6 +15,7 @@ pygame.init()
 """
 	Things Todo: 
 	- Link the Head Fruit and Body Together (BUG TAIL POSITION IS THE SAME AS PLAYER POSITION )
+	- Make it so that if the head touches the body game over 
 	- Game is Done 
 
 """
@@ -110,16 +111,21 @@ class Player(Entity):
 
 		#Initially Empty 
 		self.body = []
+
+		#Stopping the Players From Moving 
+		self.gameOver = False
 	#Updates the Player 
 	def update(self, keys, dt):
 
-		if self.__checkBorder() == True: 
-			#Constantly Moving the Player 
-			self.__changeDir(keys) 
-			self.__movePlayer(dt)
+		if not self.gameOver: 
+			if self.__checkBorder() == True: 
+				#Constantly Moving the Player 
+				self.__changeDir(keys) 
+				self.__movePlayer(dt)
 
-		#Updating Body
-		self.__updateBody()
+			#Updating Body
+			self.__updateBody()
+
 
 
 	#Moves the Body with the Player 
@@ -151,9 +157,11 @@ class Player(Entity):
 		if len(self.body) == 0:
 			#pos = [0,0], imageFile = "temp.png", width = 20, height = 20)
 			tempPos = self.pos[:]
-			self.body.append(Entity(tempPos, "body.png", self.image.get_width(), self.image.get_height()))	
+			for i in range(self.speed):
+				self.body.append(Entity(tempPos, "body.png", self.image.get_width(), self.image.get_height()))	
 		else:
-			self.body.append(Entity(self.body[len(self.body) -1].pos, "body.png", self.image.get_width(), self.image.get_height()))
+			for i in range(self.speed):
+				self.body.append(Entity(self.body[len(self.body) -1].pos, "body.png", self.image.get_width(), self.image.get_height()))
 			pass
 
 	#Updates the Direction of the Player 
@@ -175,16 +183,20 @@ class Player(Entity):
 	def __movePlayer(self, dt):
 
 		if self.dir == Dir.UP:
-			self.pos[1] += dt * self.speed * -1 
+			#self.pos[1] += dt * self.speed * -1 
+			self.pos[1] -= self.image.get_height() / self.speed
 
 		if self.dir == Dir.DOWN: 
-			self.pos[1] += dt * self.speed 
+			#self.pos[1] += dt * self.speed 
+			self.pos[1] += self.image.get_height() / self.speed
 
 		if self.dir == Dir.RIGHT:
-			self.pos[0] += dt * self.speed 
+			#self.pos[0] += dt * self.speed 
+			self.pos[0] += self.image.get_width() / self.speed
 
 		if self.dir == Dir.LEFT:
-			self.pos[0] += dt * self.speed * -1 
+			#self.pos[0] += dt * self.speed * -1 
+			self.pos[0] -= self.image.get_width() / self.speed
 
 	#Limits the Snake from going outside the border 
 	def __checkBorder(self):
@@ -197,22 +209,32 @@ class Player(Entity):
 		#Else 
 		return False 
 
+
 class Fruit(Entity):
 
 	def __init__(self, imageFile, screenD):
-
-		#Initially the Position of the Fruit will be random 
-
-		randX = random.randint(0, screenD[0])
-		randY = random.randint(0, screenD[1])
-		pos = [randX, randY]
 		
-		super().__init__(pos, imageFile)
+		super().__init__([0,0], imageFile)
 
+		#Fruit will spawn randomly 
+		randX = random.randint(0 + self.image.get_width(), screenD[0] - self.image.get_width())
+		randY = random.randint(0 + self.image.get_height(), screenD[1] - self.image.get_height())
+		pos = [randX, randY]
+		self.pos = pos
+
+		self.screenD = screenD.copy()
 
 
 	#Overriding the update method 
 	def update(self, keys, dt):
+		
+		if self.colliding == True: 
+			#Moving position of Fruit 
+			randX = random.randint(0 + self.image.get_width(), self.screenD[0] - self.image.get_width())
+			randY = random.randint(0 + self.image.get_height(), self.screenD[1] - self.image.get_height())
+			self.pos = [randX, randY]
+			self.colliding = False #Resetting 
+
 		pass
 
 
@@ -226,8 +248,8 @@ class Game:
 		#Creating a Screen to draw everything on 
 		self.screen = pygame.display.set_mode((screenW, screenH))
 
-		#speed, position , imageFile
-		self.player = Player(0.5, [400,400], "head.png", [screenW, screenH], 40,40)
+		#speedReduction, position , imageFile
+		self.player = Player(6, [400,400], "head.png", [screenW, screenH], 40,40)
 
 		pygame.display.set_caption("Jc Snake Game")
 
@@ -295,7 +317,7 @@ class Game:
 		self.counter +=  dt
 
 		# One Collision per 5 Frames 
-		if self.counter > (dt * 5):
+		if self.counter > (dt * 4):
 
 			#Player and Fruit are Colliding 
 			if self.collisionChecker.isColliding() == True: 
@@ -303,7 +325,7 @@ class Game:
 				#Telling the Player to Grow a Tail 
 				self.player.growBody()
 				#Telling the Fruit to Move to a different location 
-
+				self.fruit.colliding = True 
 			#Resetting Counter 
 			self.counter = 0 
 
