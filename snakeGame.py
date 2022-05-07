@@ -12,15 +12,6 @@ import random
 pygame.init()
 
 
-"""
-	Things Todo: 
-	- Link the Head Fruit and Body Together (BUG TAIL POSITION IS THE SAME AS PLAYER POSITION )
-	- Make it so that if the head touches the body game over 
-	- Game is Done 
-
-"""
-
-
 #Used to Detect Collisions Between Two Entities 
 class Collision:
 	
@@ -122,6 +113,10 @@ class Player(Entity):
 				#Constantly Moving the Player 
 				self.__changeDir(keys) 
 				self.__movePlayer(dt)
+			else:
+				print('Game OVER')
+				self.gameOver = True
+
 
 			#Updating Body
 			self.__updateBody()
@@ -249,9 +244,9 @@ class Game:
 		self.screen = pygame.display.set_mode((screenW, screenH))
 
 		#speedReduction, position , imageFile
-		self.player = Player(6, [400,400], "head.png", [screenW, screenH], 40,40)
+		self.player = Player(6, [400,400], "head.jpg", [screenW, screenH], 40,40)
 
-		pygame.display.set_caption("Jc Snake Game")
+		pygame.display.set_caption("Rudy Snake Game")
 
 		#Fruit 
 		#ImageFile, screenD
@@ -262,6 +257,9 @@ class Game:
 
 		#First Entity, Second Entitiy
 		self.collisionChecker = Collision(self.player, self.fruit)
+
+		self.gameOverFont = pygame.font.Font('freesansbold.ttf', 32)
+	
 
 	def start(self):
 		self.__gameLoop()
@@ -295,6 +293,15 @@ class Game:
 			self.__updateComponents(keys, dt)
 
 			self.__drawComponents()
+
+			# Ending the Game 
+			if self.player.gameOver:
+				self.screen.fill(SCREEN_COLOR)
+				green = (0, 255, 0)
+				blue = (0, 0, 128)
+				text = self.gameOverFont.render('Game Over Restart Program', True, green, blue)
+				self.screen.blit(text, (200,400))
+
 			#Updating the Display 
 			pygame.display.update()
 
@@ -329,7 +336,15 @@ class Game:
 			#Resetting Counter 
 			self.counter = 0 
 
-		pass
+			# Check if Player colliding with body 
+			for i in range(len(self.player.body)):
+				# Don't check collision on the first three bodies 
+				skipBodyCount = 15 
+				if i >= skipBodyCount:
+					tempCollisionChecker = Collision(self.player, self.player.body[i])
+					# Player and Body Colliding
+					if tempCollisionChecker.isColliding() == True:
+						self.player.gameOver = True # Since this is used to determine if a game is over
 
 	#Draws all the components of the Game 
 	def __drawComponents(self):
